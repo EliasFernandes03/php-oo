@@ -4,16 +4,56 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-final class CursoController
+use App\Entity\Curso;
+use App\Validator\CursoValidator;
+
+final class CursoController extends AbstractController
 {
+    public CursoValidator $validator;
+    public mixed $entityManager;
+
+    public function __construct()
+    {
+        $this->validator = new CursoValidator();
+        $this->entityManager = parent::entityManager();
+    }
+
     public function listar(): void
     {
-        echo "Listar";
+
+        $repository = $this->entityManager->getRepository(Curso::class);
+
+        parent::render('curso/listar', [
+            'cursos' => $repository->findAll(),
+        ]);
     }
 
     public function add(): void
     {
-        echo "<marquee>Adicionar</marquee>";
+        if (true === empty($_POST)) {
+            parent::render('curso/add');
+            return;
+        }
+
+        $errors = $this->validator->validateRequest();
+
+        if (false === empty($errors)) {    
+            $_SESSION['errors'] = $errors;
+
+            parent::render('curso/add');
+            return;
+        }
+
+        $curso = new Curso();
+        $curso->name = $_POST['name'];
+        $curso->description = $_POST['description'];
+
+
+        //INSERT INTO
+        $this->entityManager->persist($curso);
+        $this->entityManager->flush();
+
+        header('location: /cursos/listar');
     }
 
     public function editar(): void
@@ -23,6 +63,14 @@ final class CursoController
 
     public function excluir(): void
     {
-        echo "Excluir";
+        $id = $_GET['id'];
+        $curso = $this->entityManager->find(Curso::class, $id);
+
+        if($curso !== null) {
+            $this->entityManager->remove($curso);
+            $this->entityManager->flush();
+        }
+
+        header('location: /cursos/listar');
     }
 }
